@@ -1,23 +1,32 @@
-<!-- Arquivo HTML completo com câmera funcionando + gestos + desenho -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Caneta Virtual AI Gestos</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caneta Virtual Gestual</title>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MediaPipe -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .canvas-container {
+
+        .canvas-box {
             position: relative;
             width: 100%;
-            padding-top: 75%;
-            background-color: #1f2937;
+            max-width: 450px;
+            aspect-ratio: 4/3;
+            background: #111;
+            overflow: hidden;
+            border-radius: 16px;
+            border: 4px solid #6366f1;
         }
+
         canvas, video {
             position: absolute;
             top: 0;
@@ -25,171 +34,202 @@
             width: 100%;
             height: 100%;
         }
-        #drawingCanvas { background: transparent; z-index: 10; }
-        #outputCanvas { z-index: 5; transform: scaleX(-1); }
-        video { display: none; }
+
+        #drawCanvas {
+            z-index: 10;
+        }
+
+        #videoCanvas {
+            z-index: 5;
+            transform: scaleX(-1);
+        }
     </style>
 </head>
 
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-2 sm:p-4">
+<body class="bg-gray-900 text-white p-4 flex flex-col items-center gap-4">
 
-    <h1 class="text-2xl font-bold mb-4 text-indigo-400">Caneta Virtual Web Gestos</h1>
+    <h1 class="text-xl font-bold text-indigo-400">Caneta Virtual Gestual</h1>
 
-    <button id="start-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-full shadow-lg mb-4">
-        ▶️ Iniciar Câmera
+    <button id="start" onclick="startCam()" class="bg-indigo-600 px-6 py-3 rounded-full text-white font-bold">
+        Iniciar Câmera
     </button>
 
-    <div id="controls" class="flex flex-wrap justify-center gap-2 p-2 bg-gray-800 rounded-xl shadow-lg w-full max-w-lg mb-4">
-        <button onclick="changeColor('255,0,0','Desenhar',event)" class="color-btn bg-red-600 px-4 py-2 rounded-lg">Vermelho</button>
-        <button onclick="changeColor('0,255,0','Desenhar',event)" class="color-btn bg-green-600 px-4 py-2 rounded-lg">Verde</button>
-        <button onclick="changeColor('0,0,255','Desenhar',event)" class="color-btn bg-blue-600 px-4 py-2 rounded-lg">Azul</button>
-        <button onclick="changeColor('0,0,0','Apagar',event)" class="color-btn bg-gray-400 px-4 py-2 rounded-lg">Borracha</button>
-        <button onclick="clearCanvas()" class="bg-indigo-600 px-4 py-2 rounded-lg">Limpar</button>
+    <div class="flex gap-2 flex-wrap justify-center">
+        <button onclick="setColor('255,0,0')" class="bg-red-600 px-3 py-2 rounded-lg">Vermelho</button>
+        <button onclick="setColor('0,255,0')" class="bg-green-600 px-3 py-2 rounded-lg">Verde</button>
+        <button onclick="setColor('0,0,255')" class="bg-blue-600 px-3 py-2 rounded-lg">Azul</button>
+        <button onclick="clearDraw()" class="bg-gray-500 px-3 py-2 rounded-lg">Limpar</button>
+        <button onclick="savePNG()" class="bg-yellow-500 px-3 py-2 rounded-lg">Salvar PNG</button>
     </div>
 
-    <div class="canvas-container w-full max-w-xl rounded-xl overflow-hidden shadow-2xl border-4 border-indigo-500">
-        <canvas id="outputCanvas"></canvas>
-        <canvas id="drawingCanvas"></canvas>
-        <video id="video" playsinline></video>
+    <p id="status" class="text-sm text-indigo-300 font-semibold">
+        Aguardando câmera...
+    </p>
+
+    <div class="canvas-box">
+        <canvas id="videoCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
     </div>
 
-    <div id="status" class="mt-4 p-3 bg-gray-800 rounded-lg w-full max-w-xl text-center text-sm font-semibold">
-        <p>Modo: <span id="currentMode" class="text-white">INATIVO</span></p>
-        <p>👆 Desenhar • 🤞 Borracha • ✊ Limpar</p>
-    </div>
+    <script>
+        const videoCanvas = document.getElementById("videoCanvas");
+        const videoCtx = videoCanvas.getContext("2d");
 
+        const drawCanvas = document.getElementById("drawCanvas");
+        const drawCtx = drawCanvas.getContext("2d");
 
-<script>
-    const CAMERA_WIDTH = 320;
-    const CAMERA_HEIGHT = 240;
+        let videoEl = document.createElement("video");
+        let camera;
 
-    const outputCanvas = document.getElementById('outputCanvas');
-    const outputCtx = outputCanvas.getContext('2d');
-    const drawingCanvas = document.getElementById('drawingCanvas');
-    const drawCtx = drawingCanvas.getContext('2d');
+        let drawColor = "255,0,0";
+        let thickness = 8;
+        let eraserSize = 40;
+        let prevX = null;
+        let prevY = null;
 
-    const video = document.getElementById('video');
-    const status = document.getElementById('currentMode');
-
-    outputCanvas.width = CAMERA_WIDTH;
-    outputCanvas.height = CAMERA_HEIGHT;
-    drawingCanvas.width = CAMERA_WIDTH;
-    drawingCanvas.height = CAMERA_HEIGHT;
-
-    let drawColor = '255,0,0';
-    let prevX = 0;
-    let prevY = 0;
-    const DRAW_THICKNESS = 8;
-    const ERASER_THICKNESS = 40;
-
-    function changeColor(rgb, tool, ev){
-        drawColor = rgb;
-        status.textContent = `Ferramenta: ${tool}`;
-        document.querySelectorAll('.color-btn').forEach(btn=>btn.classList.remove('ring-4','ring-indigo-400'));
-        ev.target.classList.add('ring-4','ring-indigo-400');
-    }
-
-    function clearCanvas(){ drawCtx.clearRect(0,0,drawingCanvas.width,drawingCanvas.height); }
-
-    function getGesture(landmarks){
-        const tips = [8,12,16,20];
-        const pip = [6,10,14,18];
-        const up = [];
-
-        for(let i=0;i<4;i++) up.push(landmarks[tips[i]].y < landmarks[pip[i]].y);
-
-        const allDown = !up.some(f=>f);
-        if(allDown) return 'CLEAR';
-
-        if(up[0] && up[1] && !up[2] && !up[3]) return 'ERASE';
-
-        if(up[0] && !up[1] && !up[2] && !up[3]) return 'DRAW';
-
-        return 'IDLE';
-    }
-
-    function onResults(results){
-        outputCtx.clearRect(0,0,CAMERA_WIDTH,CAMERA_HEIGHT);
-        outputCtx.save();
-        outputCtx.scale(-1,1);
-        outputCtx.translate(-CAMERA_WIDTH,0);
-        outputCtx.drawImage(results.image,0,0,CAMERA_WIDTH,CAMERA_HEIGHT);
-        outputCtx.restore();
-
-        if(!results.multiHandLandmarks){
-            status.textContent = 'INATIVO';
-            prevX = prevY = 0;
-            return;
+        function fitCanvas() {
+            const box = document.querySelector(".canvas-box");
+            videoCanvas.width = box.clientWidth;
+            videoCanvas.height = box.clientHeight;
+            drawCanvas.width = box.clientWidth;
+            drawCanvas.height = box.clientHeight;
         }
 
-        const hand = results.multiHandLandmarks[0];
-        drawConnectors(outputCtx, hand, HAND_CONNECTIONS, {color:'#00FF00'});
-        drawLandmarks(outputCtx, hand, {color:'#FF0000'});
+        window.onload = fitCanvas;
+        window.onresize = fitCanvas;
 
-        const mode = getGesture(hand);
-        const tip = hand[8];
-        const x = (1 - tip.x) * CAMERA_WIDTH;
-        const y = tip.y * CAMERA_HEIGHT;
-
-        if(mode === 'CLEAR'){
-            clearCanvas();
-            status.textContent = 'LIMPOU TELA';
-            prevX = prevY = 0;
-            return;
+        function setColor(c) {
+            drawColor = c;
+            document.getElementById("status").textContent = "Cor alterada";
         }
 
-        if(mode === 'DRAW' || mode === 'ERASE'){
-            status.textContent = mode === 'DRAW' ? 'DESENHANDO' : 'BORRACHA';
-            const thick = mode === 'DRAW' ? DRAW_THICKNESS : ERASER_THICKNESS;
-            const color = mode === 'DRAW' ? `rgb(${drawColor})` : 'rgba(0,0,0,1)';
-            const comp = mode === 'DRAW' ? 'source-over' : 'destination-out';
-
-            if(prevX === 0 && prevY === 0){ prevX = x; prevY = y; return; }
-
-            drawCtx.globalCompositeOperation = comp;
-            drawCtx.beginPath();
-            drawCtx.moveTo(prevX,prevY);
-            drawCtx.lineTo(x,y);
-            drawCtx.strokeStyle = color;
-            drawCtx.lineWidth = thick;
-            drawCtx.lineCap = 'round';
-            drawCtx.stroke();
-
-            prevX = x;
-            prevY = y;
-            return;
+        function clearDraw() {
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         }
 
-        status.textContent = 'INATIVO';
-        prevX = prevY = 0;
-    }
+        function savePNG() {
+            const link = document.createElement("a");
+            link.download = "desenho.png";
+            link.href = drawCanvas.toDataURL("image/png");
+            link.click();
+        }
 
-    const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.5 });
-    hands.onResults(onResults);
+        function getGesture(landmarks) {
+            const tip = [8, 12, 16, 20];
+            const pip = [6, 10, 14, 18];
+            let fingers = [];
 
-    document.getElementById('start-btn').onclick = async ()=>{
-        const btn = document.getElementById('start-btn');
-        btn.disabled = true;
-        btn.textContent = 'Iniciando...';
+            for (let i = 0; i < 4; i++) {
+                fingers.push(landmarks[tip[i]].y < landmarks[pip[i]].y);
+            }
 
-        const cam = new Camera(video, {
-            onFrame: async ()=>{ await hands.send({image:video}); },
-            width: CAMERA_WIDTH,
-            height: CAMERA_HEIGHT
+            const allDown = fingers.every(f => !f);
+
+            if (allDown) return "CLEAR";
+            if (fingers[0] && fingers[1] && !fingers[2] && !fingers[3]) return "ERASE";
+            if (fingers[0] && !fingers[1] && !fingers[2] && !fingers[3]) return "DRAW";
+
+            return "IDLE";
+        }
+
+        function onResults(results) {
+            videoCtx.save();
+            videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+            videoCtx.scale(-1, 1);
+            videoCtx.translate(-videoCanvas.width, 0);
+            videoCtx.drawImage(results.image, 0, 0, videoCanvas.width, videoCanvas.height);
+            videoCtx.restore();
+
+            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+                prevX = prevY = null;
+                return;
+            }
+
+            const landmarks = results.multiHandLandmarks[0];
+
+            drawConnectors(videoCtx, landmarks, HAND_CONNECTIONS, { color: "#00FF00", lineWidth: 2 });
+            drawLandmarks(videoCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
+
+            const g = getGesture(landmarks);
+
+            const tip = landmarks[8];
+            const x = (1 - tip.x) * drawCanvas.width;
+            const y = tip.y * drawCanvas.height;
+
+            if (g === "CLEAR") {
+                clearDraw();
+                prevX = prevY = null;
+                document.getElementById("status").textContent = "Limpou a tela";
+                return;
+            }
+
+            if (g === "DRAW") {
+                drawCtx.globalCompositeOperation = "source-over";
+                drawCtx.strokeStyle = `rgb(${drawColor})`;
+                drawCtx.lineWidth = thickness;
+                drawCtx.lineCap = "round";
+
+                if (prevX == null) {
+                    prevX = x;
+                    prevY = y;
+                }
+
+                drawCtx.beginPath();
+                drawCtx.moveTo(prevX, prevY);
+                drawCtx.lineTo(x, y);
+                drawCtx.stroke();
+
+                prevX = x;
+                prevY = y;
+
+                document.getElementById("status").textContent = "Desenhando";
+            } 
+            else if (g === "ERASE") {
+                drawCtx.globalCompositeOperation = "destination-out";
+
+                drawCtx.beginPath();
+                drawCtx.arc(x, y, eraserSize, 0, 2 * Math.PI);
+                drawCtx.fill();
+
+                document.getElementById("status").textContent = "Apagando";
+                prevX = prevY = null;
+            }
+            else {
+                prevX = prevY = null;
+                document.getElementById("status").textContent = "Idle";
+            }
+        }
+
+        const hands = new Hands({
+            locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
         });
 
-        try{
-            await cam.start();
-            btn.remove();
-            status.textContent = 'CÂMERA INICIADA';
-        }catch(e){
-            status.textContent = 'Erro ao iniciar';
-            btn.disabled = false;
-            btn.textContent = 'Erro. Tentar novamente';
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 0,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.6
+        });
+
+        hands.onResults(onResults);
+
+        async function startCam() {
+            document.getElementById("start").textContent = "Carregando...";
+
+            camera = new Camera(videoEl, {
+                onFrame: async () => {
+                    await hands.send({ image: videoEl });
+                },
+                width: 640,
+                height: 480
+            });
+
+            await camera.start();
+
+            document.getElementById("start").style.display = "none";
+            document.getElementById("status").textContent = "Câmera iniciada";
         }
-    };
-</script>
+    </script>
 
 </body>
 </html>
