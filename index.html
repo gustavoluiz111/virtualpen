@@ -1,451 +1,366 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Caneta Virtual (Gestos) — Copy & Paste</title>
+<title>Caneta Virtual Gestos — Completo</title>
+
+<!-- Tailwind opcional -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- MediaPipe Hands -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675469240/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675469240/camera_utils.js" crossorigin="anonymous"></script>
+
+<!-- MediaPipe Hands + utilitários -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675469240/drawing_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675469240/camera_utils.js"></script>
 
 <style>
-  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#0f172a; color:#fff; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px; }
-  .card { width:100%; max-width:920px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:14px; box-shadow: 0 6px 30px rgba(2,6,23,0.7); border:1px solid rgba(255,255,255,0.03); }
-  .canvas-wrap { position:relative; width:100%; padding-top:62.5%; border-radius:10px; overflow:hidden; background:#111827; }
-  video, canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
-  #videoEl { transform:scaleX(-1); /* espelha o vídeo */ }
-  #overlayCanvas { pointer-events:none; z-index:2; }
-  #drawCanvas  { z-index:3; }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-  .swatch { width:44px; height:28px; border-radius:8px; border:2px solid rgba(255,255,255,0.06); box-shadow:0 4px 14px rgba(2,6,23,0.5); display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  .swatch.active { outline:3px solid rgba(99,102,241,0.85); transform:scale(1.03); }
-  .btn { background:#374151; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; }
-  .status { font-weight:600; color:#e5e7eb; }
-  .legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
-  .legend .item { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:8px; }
-  .small { font-size:13px; color:#cbd5e1; }
+  body { background:#0f1724; color:#e6eef8; font-family:Inter, system-ui, Arial; display:flex; flex-direction:column; align-items:center; gap:12px; padding:18px; }
+  .card { width:100%; max-width:820px; }
+  .canvas-wrap { position:relative; width:100%; padding-top:60%; background:#0b1220; border-radius:14px; overflow:hidden; border:3px solid rgba(99,102,241,0.25); }
+  canvas, video { position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
+  #videoEl { display:none; } /* usamos o canvas para exibir vídeo */
+  #controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  .btn { padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+  .legend { font-size:0.92rem; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; margin-top:10px; }
+  .status { font-weight:700; text-align:center; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.02); }
 </style>
 </head>
 <body>
 
 <div class="card">
-  <h1 style="font-size:20px; color:#a78bfa; margin:0 0 8px 0;">Caneta Virtual — Gestos</h1>
+  <h1 style="text-align:center; color:#7c3aed; font-size:1.25rem; margin-bottom:6px;">Caneta Virtual Gestos</h1>
 
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-    <div>
-      <button id="startBtn" class="btn">▶️ Iniciar Câmera</button>
-      <button id="clearBtn" class="btn" style="margin-left:8px;">Limpar Tela</button>
-    </div>
-    <div class="status" id="statusText">Modo: INATIVO</div>
+  <div style="display:flex; gap:10px; justify-content:center; margin-bottom:8px;">
+    <button id="startBtn" class="btn" style="background:#7c3aed; color:white;">▶️ Iniciar Câmera</button>
+    <button id="downloadBtn" class="btn" style="background:#f59e0b; color:#08111c;">Salvar PNG</button>
+    <button id="clearBtn" class="btn" style="background:#374151; color:white;">Limpar</button>
   </div>
 
-  <div class="canvas-wrap" style="margin-top:12px;">
-    <video id="videoEl" playsinline></video>
-    <!-- canvas para desenhar video landmarks (opcional) -->
-    <canvas id="overlayCanvas"></canvas>
-    <!-- canvas principal onde o usuário desenha -->
+  <div class="canvas-wrap">
+    <!-- canvas que mostra o stream (espelhado) -->
+    <canvas id="videoCanvas"></canvas>
+    <!-- canvas de desenho (posição na frente) -->
     <canvas id="drawCanvas"></canvas>
-    <!-- swatches visuais (desenhados no overlay para evitar pointer events) -->
+    <!-- vídeo oculto (fonte para MediaPipe) -->
+    <video id="videoEl" playsinline></video>
   </div>
 
-  <div class="controls" style="margin-top:10px;">
-    <div id="swatches" style="display:flex; gap:8px; align-items:center;">
-      <!-- cores por padrão -->
-      <div class="swatch" data-rgb="255,0,0" title="Vermelho" style="background:rgb(255,0,0)"></div>
-      <div class="swatch" data-rgb="0,255,0" title="Verde" style="background:rgb(0,255,0)"></div>
-      <div class="swatch" data-rgb="0,0,255" title="Azul" style="background:rgb(0,0,255)"></div>
-      <div class="swatch" data-rgb="0,0,0" title="Preto" style="background:rgb(0,0,0)"></div>
-      <div class="swatch" data-rgb="255,255,255" title="Branco" style="background:rgb(255,255,255)"></div>
-    </div>
-
-    <div style="margin-left:auto; display:flex; gap:8px;">
-      <div class="small" id="hint">Trocar cor: posicione o indicador sobre uma cor e segure ~600ms</div>
-    </div>
+  <div id="controls" style="margin-top:10px;">
+    <div id="colorRed" class="btn" style="background:#ef4444;color:white;">Vermelho</div>
+    <div id="colorGreen" class="btn" style="background:#10b981;color:white;">Verde</div>
+    <div id="colorBlue" class="btn" style="background:#3b82f6;color:white;">Azul</div>
+    <div id="eraserBtn" class="btn" style="background:#9ca3af;color:#08111c;">Borracha</div>
   </div>
+
+  <div id="status" class="status" style="margin-top:10px;">Modo: <span id="modeText">INATIVO</span></div>
 
   <div class="legend" style="margin-top:12px;">
-    <div class="item"><strong>👆</strong><div class="small">Apontar = Desenhar</div></div>
-    <div class="item"><strong>🤞</strong><div class="small">Indicador + Médio = Borracha</div></div>
-    <div class="item"><strong>✊</strong><div class="small">Punho Fechado = Limpar Tela</div></div>
-    <div class="item"><strong>🖐️ (segurar)</strong><div class="small">Segurar indicador sobre swatch = Trocar cor</div></div>
+    <strong>Legenda (gestos):</strong>
+    <ul style="margin:6px 0 0 18px;">
+      <li>👆 Indicador levantado sozinho → DESENHAR</li>
+      <li>🤞 Indicador + médio levantados → BORRACHA (apagar)</li>
+      <li>✊ Punho fechado (todos dedos baixos) → LIMPAR TELA</li>
+      <li>Mover o dedo indicador para o topo: esquerda/centro/direita troca cor para Vermelho/Verde/Azul</li>
+      <li>Também é possível trocar cor pelos botões abaixo do canvas</li>
+    </ul>
   </div>
 </div>
 
 <script>
-/*
-  Versão otimizada:
-  - usa MediaPipe Hands (cdn)
-  - corrige espelhamento (coordenadas refletidas para o canvas de desenho)
-  - throttling / debounce para reduzir trabalho e evitar travamentos
-  - seleção de cor por manter o indicador acima de um swatch ~600ms
-  - gestos: DRAW (apontar), ERASE (index+middle), CLEAR (punho)
-*/
-
-const VIDEO_W = 640; // base (será escalado pelo css)
+/* ==========================
+   Configurações e helpers
+   ========================== */
+const VIDEO_W = 640;
 const VIDEO_H = 480;
 
 const videoEl = document.getElementById('videoEl');
-const overlay = document.getElementById('overlayCanvas');
+const videoCanvas = document.getElementById('videoCanvas');
 const drawCanvas = document.getElementById('drawCanvas');
-const statusText = document.getElementById('statusText');
-const startBtn = document.getElementById('startBtn');
-const clearBtn = document.getElementById('clearBtn');
-const swatchesEl = document.getElementById('swatches');
+const vctx = videoCanvas.getContext('2d', { willReadFrequently:true });
+const dctx = drawCanvas.getContext('2d');
 
-// device pixel ratio for crisp canvas
-const DPR = Math.max(1, window.devicePixelRatio || 1);
+videoCanvas.width = drawCanvas.width = VIDEO_W;
+videoCanvas.height = drawCanvas.height = VIDEO_H;
 
-function setCanvasSize() {
-  // compute actual pixel size according to container
-  const wrap = videoEl.parentElement;
+let drawColor = 'rgb(239,68,68)'; // vermelho inicial
+let isEraser = false;
+let prev = null; // {x,y}
+let smoothing = { x:0, y:0, smoothFactor:0.6 }; // simples suavização
+let lastSeen = Date.now();
+let handsAvailable = false;
+
+/* Ajustar tamanho dos canvases conforme container (mantendo proporção) */
+function resizeToContainer(){
+  const wrap = document.querySelector('.canvas-wrap');
   const rect = wrap.getBoundingClientRect();
-  overlay.width = Math.round(rect.width * DPR);
-  overlay.height = Math.round(rect.height * DPR);
-  overlay.style.width = rect.width + 'px';
-  overlay.style.height = rect.height + 'px';
-
-  drawCanvas.width = overlay.width;
-  drawCanvas.height = overlay.height;
-  drawCanvas.style.width = rect.width + 'px';
-  drawCanvas.style.height = rect.height + 'px';
-
-  videoEl.width = rect.width;
-  videoEl.height = rect.height;
-  videoEl.style.width = rect.width + 'px';
-  videoEl.style.height = rect.height + 'px';
+  videoCanvas.style.width = drawCanvas.style.width = rect.width + 'px';
+  videoCanvas.style.height = drawCanvas.style.height = rect.height + 'px';
 }
-setCanvasSize();
-window.addEventListener('resize', () => { setCanvasSize(); });
+window.addEventListener('resize', resizeToContainer);
+resizeToContainer();
 
-const oCtx = overlay.getContext('2d');
-const dCtx = drawCanvas.getContext('2d');
-
-// drawing state
-let drawColor = '255,0,0'; // rgb string
-let drawThickness = 6;
-let eraserThickness = 40;
-
-let prev = null;
-let lastDrawAt = 0;
-const MIN_DRAW_INTERVAL = 8; // ms (throttle)
-
-let lastColorHover = null; // {swatchElement, startTime}
-const COLOR_HOLD_MS = 600; // tempo para confirmar troca de cor
-
-// helper: convert normalized landmark to mirrored pixel coords on our canvas
-function landmarkToCanvasXY(landmark, canvasEl) {
-  // landmark.x is 0..1 left->right relative to video feed (non-mirrored)
-  // videoEl is mirrored with CSS (scaleX(-1)). To match visual mirror we must invert X:
-  const cw = canvasEl.width;
-  const ch = canvasEl.height;
-  const x = (1 - landmark.x) * cw; // mirror horizontally
-  const y = landmark.y * ch;
+/* Util: mapear landmark.x (0..1) para coordenada no canvas já espelhada */
+function landmarkToCoords(landmark){
+  // landmark.x: 0 = esquerda da imagem original (não espelhada)
+  // Como vamos desenhar o vídeo espelhado para comportamento "frontal",
+  // a posição visual do dedo no canvas espelhado é:
+  const x = (1 - landmark.x) * VIDEO_W;
+  const y = landmark.y * VIDEO_H;
   return { x, y };
 }
 
-// Gestos baseado em landmarks (MediaPipe hands)
-// finger tip indices: 4 thumb_tip, 8 index_tip, 12 middle_tip, 16 ring_tip, 20 pinky_tip
-// pip indices: 3 thumb_ip, 6 index_pip, 10 middle_pip, 14 ring_pip, 18 pinky_pip
-function detectGesture(landmarks) {
-  // safety:
-  if (!landmarks || landmarks.length === 0) return 'IDLE';
-
-  // multiple heuristics:
-  // check if fist (all tips lower than corresponding pip in y? -> closed hand)
-  const tips = [8,12,16,20];
-  const pips = [6,10,14,18];
-  const up = tips.map((t,i)=> landmarks[t].y < landmarks[pips[i]].y ); // true = finger up (extended)
-  const allDown = !up.some(Boolean);
-
-  if (allDown) return 'CLEAR'; // punho fechado
-
-  // erase: index and middle up, others down
-  if (up[0] && up[1] && !up[2] && !up[3]) return 'ERASE';
-
-  // draw: only index up
-  if (up[0] && !up[1] && !up[2] && !up[3]) return 'DRAW';
-
-  return 'IDLE';
+/* ==========================
+   Funções de desenho
+   ========================== */
+function clearDrawing(){
+  dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height);
+  prev = null;
 }
 
-// draw line on drawCanvas from p1->p2 with specified options
-function strokeLine(p1, p2, colorStr, thickness, composite = 'source-over') {
-  dCtx.save();
-  dCtx.globalCompositeOperation = composite;
-  dCtx.lineCap = 'round';
-  dCtx.lineJoin = 'round';
-  dCtx.strokeStyle = colorStr;
-  dCtx.lineWidth = thickness;
-  dCtx.beginPath();
-  dCtx.moveTo(p1.x, p1.y);
-  dCtx.lineTo(p2.x, p2.y);
-  dCtx.stroke();
-  dCtx.restore();
+function drawLine(x1,y1,x2,y2, color, thickness, composite='source-over'){
+  dctx.save();
+  dctx.globalCompositeOperation = composite;
+  dctx.beginPath();
+  dctx.moveTo(x1,y1);
+  dctx.lineTo(x2,y2);
+  dctx.strokeStyle = color;
+  dctx.lineWidth = thickness;
+  dctx.lineCap = 'round';
+  dctx.stroke();
+  dctx.restore();
 }
 
-// clear draw canvas
-function clearDraw() {
-  dCtx.clearRect(0,0,drawCanvas.width, drawCanvas.height);
-}
+/* ==========================
+   UI e controles
+   ========================== */
+document.getElementById('startBtn').addEventListener('click', startCamera);
+document.getElementById('clearBtn').addEventListener('click', () => { clearDrawing(); setModeText('LIMPOU'); });
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  // mesclar video (transparente) + desenho para salvar só o desenho
+  const link = document.createElement('a');
+  link.download = 'caneta_virtual.png';
+  link.href = drawCanvas.toDataURL('image/png');
+  link.click();
+});
+document.getElementById('colorRed').addEventListener('click', ()=>{ drawColor='rgb(239,68,68)'; isEraser=false; setModeText('Vermelho'); });
+document.getElementById('colorGreen').addEventListener('click', ()=>{ drawColor='rgb(16,185,129)'; isEraser=false; setModeText('Verde'); });
+document.getElementById('colorBlue').addEventListener('click', ()=>{ drawColor='rgb(59,130,246)'; isEraser=false; setModeText('Azul'); });
+document.getElementById('eraserBtn').addEventListener('click', ()=>{ isEraser=true; setModeText('Borracha'); });
 
-// draw swatches overlay for visual reference (we also have HTML swatch elements)
-// this is optional but helps when selecting by finger
-function drawSwatchesOverlay() {
-  const gap = 10 * DPR;
-  const swW = 80 * DPR;
-  const swH = 44 * DPR;
-  const startX = 12 * DPR;
-  const startY = 12 * DPR;
-  oCtx.save();
-  oCtx.clearRect(0,0,overlay.width, overlay.height);
-  // draw outline background behind swatches
-  oCtx.fillStyle = 'rgba(0,0,0,0.25)';
-  oCtx.fillRect(startX - 8*DPR, startY - 8*DPR, (swW + gap) * swatchesEl.children.length + 16*DPR, swH + 16*DPR);
-  // each swatch color
-  for (let i=0;i<swatchesEl.children.length;i++){
-    const sw = swatchesEl.children[i];
-    const rgb = sw.dataset.rgb;
-    const x = startX + i*(swW + gap);
-    oCtx.fillStyle = `rgb(${rgb})`;
-    oCtx.fillRect(x, startY, swW, swH);
-    oCtx.strokeStyle = 'rgba(255,255,255,0.08)';
-    oCtx.lineWidth = 2*DPR;
-    oCtx.strokeRect(x, startY, swW, swH);
-    // if active, draw ring
-    if (rgb === drawColor) {
-      oCtx.strokeStyle = 'rgba(167,139,250,0.95)';
-      oCtx.lineWidth = 4*DPR;
-      oCtx.strokeRect(x-6*DPR, startY-6*DPR, swW+12*DPR, swH+12*DPR);
-    }
-    // write small label (optional)
-  }
-  oCtx.restore();
-}
+function setModeText(t){ document.getElementById('modeText').textContent = t; }
 
-// compute which swatch (if any) is under a canvas pixel x,y
-function swatchUnder(x, y) {
-  const gap = 10 * DPR;
-  const swW = 80 * DPR;
-  const swH = 44 * DPR;
-  const startX = 12 * DPR;
-  const startY = 12 * DPR;
-  for (let i=0;i<swatchesEl.children.length;i++){
-    const sx = startX + i*(swW + gap);
-    if (x >= sx && x <= sx + swW && y >= startY && y <= startY + swH) return swatchesEl.children[i];
-  }
-  return null;
-}
-
-// initial active swatch
-(function initSwatchesHtml() {
-  // mark first swatch active visually
-  if (swatchesEl.children.length) {
-    swatchesEl.children[0].classList.add('active');
-    drawColor = swatchesEl.children[0].dataset.rgb;
-  }
-  // enable click on swatches as fallback (click to set color)
-  Array.from(swatchesEl.children).forEach(sw=>{
-    sw.addEventListener('click', ()=> {
-      Array.from(swatchesEl.children).forEach(s=>s.classList.remove('active'));
-      sw.classList.add('active');
-      drawColor = sw.dataset.rgb;
-      // redraw overlay highlight
-      drawSwatchesOverlay();
-    });
-  });
-})();
-
-// MediaPipe Hands setup
+/* ==========================
+   MediaPipe Hands setup
+   ========================== */
 const hands = new Hands({
-  locateFile: (file) => {
-    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
-  }
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
 });
 
 hands.setOptions({
   maxNumHands: 1,
   modelComplexity: 1,
   minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.6
+  minTrackingConfidence: 0.5
 });
 
-let camera = null;
-let lastProcessedAt = 0;
-const PROCESS_THROTTLE_MS = 8; // control how often we process frames for drawing (ms)
+/* Quando o MediaPipe devolve resultados */
+hands.onResults(onResults);
 
-hands.onResults(onHandsResults);
+/* Camera util que usa o videoEl como fonte */
+let cameraInstance = null;
 
-// main handler
-function onHandsResults(results) {
-  // draw swatches overlay every frame (cheap)
-  drawSwatchesOverlay();
-
-  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-    statusText.textContent = 'Modo: INATIVO';
-    prev = null;
-    lastColorHover = null;
-    return;
-  }
-
-  const landmarks = results.multiHandLandmarks[0];
-
-  // draw landmarks on overlay (mirrored drawing)
-  oCtx.save();
-  // clear previously drawn landmarks (swatches already drawn at start, so overlay cleared earlier)
-  // we'll draw landmarks on top
-  for (let i=0;i<landmarks.length;i++){
-    const lm = landmarkToCanvasXY(landmarks[i], overlay);
-    oCtx.beginPath();
-    oCtx.arc(lm.x, lm.y, 4*DPR, 0, Math.PI*2);
-    oCtx.fillStyle = 'rgba(255,255,255,0.9)';
-    oCtx.fill();
-  }
-  // optional: draw lines between landmarks
-  try {
-    drawConnectors(oCtx, landmarks, HAND_CONNECTIONS, {color:'#00ff9f', lineWidth:2*DPR});
-  } catch (e) {
-    // ignore if drawing_utils not available
-  }
-  oCtx.restore();
-
-  const gesture = detectGesture(landmarks);
-
-  // index tip position mirrored to canvas
-  const indexTip = landmarkToCanvasXY(landmarks[8], overlay);
-
-  // color selection: if indicator hovers over swatch area, start timer and after hold change color
-  const hoveredSwatch = swatchUnder(indexTip.x, indexTip.y);
-
-  if (hoveredSwatch) {
-    if (!lastColorHover || lastColorHover.swatch !== hoveredSwatch) {
-      lastColorHover = { swatch: hoveredSwatch, start: performance.now() };
-    } else {
-      const dt = performance.now() - lastColorHover.start;
-      // draw progress indicator (ring around index tip)
-      oCtx.save();
-      const p = Math.min(1, dt / COLOR_HOLD_MS);
-      oCtx.beginPath();
-      oCtx.arc(indexTip.x, indexTip.y, 18*DPR, -Math.PI/2, -Math.PI/2 + 2*Math.PI*p);
-      oCtx.strokeStyle = 'rgba(255,255,255,0.9)';
-      oCtx.lineWidth = 3*DPR;
-      oCtx.stroke();
-      oCtx.restore();
-
-      if (dt >= COLOR_HOLD_MS) {
-        // commit color change
-        Array.from(swatchesEl.children).forEach(s=>s.classList.remove('active'));
-        lastColorHover.swatch.classList.add('active');
-        drawColor = lastColorHover.swatch.dataset.rgb;
-        // small feedback
-        statusText.textContent = 'Cor alterada!';
-        setTimeout(()=>statusText.textContent = 'Modo: ' + (gesture === 'DRAW' ? 'DESENHANDO' : 'INATIVO'), 800);
-        // reset hover so it doesn't repeatedly trigger
-        lastColorHover = null;
-      }
-    }
-  } else {
-    lastColorHover = null;
-  }
-
-  // handle gestures & drawing throttled
-  const now = performance.now();
-  if (now - lastProcessedAt < PROCESS_THROTTLE_MS) return;
-  lastProcessedAt = now;
-
-  if (gesture === 'CLEAR') {
-    clearDraw();
-    statusText.textContent = 'LIMPOU TELA (Punho Fechado)';
-    prev = null;
-    return;
-  }
-
-  if (gesture === 'ERASE') {
-    statusText.textContent = 'APAGANDO (Borracha)';
-    // erase by drawing with destination-out composite
-    if (prev && (now - lastDrawAt) > MIN_DRAW_INTERVAL) {
-      strokeLine(prev, indexTip, 'rgba(0,0,0,1)', eraserThickness, 'destination-out');
-      lastDrawAt = now;
-    }
-    prev = { x: indexTip.x, y: indexTip.y };
-    return;
-  }
-
-  if (gesture === 'DRAW') {
-    statusText.textContent = 'DESENHANDO';
-    const colorStr = `rgb(${drawColor})`;
-    if (prev && (now - lastDrawAt) > MIN_DRAW_INTERVAL) {
-      strokeLine(prev, indexTip, colorStr, drawThickness, 'source-over');
-      lastDrawAt = now;
-    }
-    prev = { x: indexTip.x, y: indexTip.y };
-    return;
-  }
-
-  // default idle
-  statusText.textContent = 'Modo: INATIVO';
-  prev = null;
-}
-
-// start camera & mediapipe camera integration
-startBtn.addEventListener('click', async () => {
+/* Iniciar câmera com segurança */
+async function startCamera(){
+  const startBtn = document.getElementById('startBtn');
   startBtn.disabled = true;
-  startBtn.textContent = 'Iniciando câmera...';
-  try {
-    // request user media with the desired resolution
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: VIDEO_W, height: VIDEO_H, facingMode: 'user' },
-      audio: false
-    });
-    videoEl.srcObject = stream;
-    await videoEl.play();
+  startBtn.textContent = 'Solicitando câmera...';
 
-    // ensure canvases match new size
-    setCanvasSize();
-
-    // create a MediaPipe Camera wrapper (this will call hands.send on each frame)
-    camera = new Camera(videoEl, {
+  try{
+    cameraInstance = new Camera(videoEl, {
       onFrame: async () => {
-        try {
-          await hands.send({ image: videoEl });
-        } catch (err) {
-          // ignore send errors
-        }
+        await hands.send({image: videoEl});
       },
       width: VIDEO_W,
-      height: VIDEO_H
+      height: VIDEO_H,
     });
-    camera.start();
-
+    await cameraInstance.start();
     startBtn.style.display = 'none';
-    statusText.textContent = 'Câmera iniciada — Aguardando gesto';
+    setModeText('Câmera Iniciada — Aguardando gesto');
   } catch (err) {
-    console.error('Erro ao iniciar câmera:', err);
+    console.error('Erro iniciando câmera:', err);
     startBtn.disabled = false;
     startBtn.textContent = '▶️ Iniciar Câmera';
-    statusText.textContent = 'Erro: permissão/câmera';
+    // Mensagem amigável explicando overlay/permit
+    alert(
+`Não foi possível iniciar a câmera.
+Possíveis causas:
+• O navegador não tem permissão para acessar a câmera.
+• Há um APP com sobreposição/bolhas (chat head) bloqueando a permissão em Android.
+Soluções:
+1) Feche apps com bolhas/overlays (ex.: Facebook Messenger, alguns boosters).
+2) Vá em Configurações do App (navegador) → Permissões → Câmera → permitir.
+3) Recarregue a página e tente novamente.
+Se estiver hospedado em servidor, verifique se é HTTPS (getUserMedia exige HTTPS).`
+    );
+    setModeText('ERRO: permissão/câmera');
   }
-});
+}
 
-// clear button fallback
-clearBtn.addEventListener('click', () => {
-  clearDraw();
-  statusText.textContent = 'Tela limpa (botão)';
-});
+/* ==========================
+   onResults: desenhar vídeo + processar landmarks
+   ========================== */
+let lastProcess = 0;
+const PROCESS_INTERVAL = 16; // ~60fps máximo
 
-// initial draw of swatches
-drawSwatchesOverlay();
+function onResults(results){
+  // 1) desenhar o vídeo espelhado no canvas videoCanvas
+  vctx.save();
+  vctx.clearRect(0,0,VIDEO_W, VIDEO_H);
+  // espelhar horizontalmente (comportamento câmera frontal)
+  vctx.scale(-1, 1);
+  vctx.drawImage(results.image, -VIDEO_W, 0, VIDEO_W, VIDEO_H);
+  vctx.restore();
 
-// small safety: stop camera on page unload
-window.addEventListener('beforeunload', () => {
-  try {
-    if (camera && camera.video && camera.video.srcObject) {
-      const tracks = camera.video.srcObject.getTracks();
-      tracks.forEach(t => t.stop());
+  // 2) desenhar landmarks sobre o vídeo (espelhados)
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    handsAvailable = true;
+    lastSeen = Date.now();
+    const lm = results.multiHandLandmarks[0];
+
+    // desenhar conectores/landmarks espelhados:
+    vctx.save();
+    vctx.scale(-1, 1);
+    vctx.translate(-VIDEO_W, 0);
+    drawConnectors(vctx, lm, HAND_CONNECTIONS, { color: '#00FFAA', lineWidth: 2 });
+    drawLandmarks(vctx, lm, { color: '#FF0066', lineWidth: 1 });
+    vctx.restore();
+
+    // controlar ação de desenho com gestos
+    handleGesturesAndDrawing(lm);
+  } else {
+    // sem mão detectada
+    // se sem mão há muito tempo, reset prev para evitar linhas conectando quando reaparece
+    if (Date.now() - lastSeen > 250) {
+      prev = null;
+      setModeText('INATIVO');
     }
-  } catch(e){}
-});
+    handsAvailable = false;
+  }
+}
+
+/* ==========================
+   Lógica de gestos e desenho
+   ========================== */
+let lastGestureCheck = 0;
+const GESTURE_THROTTLE = 80; // ms
+
+function handleGesturesAndDrawing(landmarks){
+  // landmarks: array de pontos com {x,y,z}
+  // 1) detectar dedos levantados (usamos 8(tip)/6(pip) etc)
+  // Observação: landmarks são relativos à imagem não espelhada; como desenhamos espelhado, mapeamos coords para canvas com landmarkToCoords()
+
+  const tips = [8, 12, 16, 20];
+  const pips = [6, 10, 14, 18];
+  const up = [];
+  for (let i=0;i<4;i++){
+    up.push(landmarks[tips[i]].y < landmarks[pips[i]].y); // y menor -> dedo levantado para a camera (normal)
+  }
+  const allDown = !up.some(v=>v);
+  const indexUp = up[0];
+  const middleUp = up[1];
+
+  // Gestos principais:
+  // ALL DOWN -> CLEAR
+  if (allDown){
+    clearDrawing();
+    setModeText('LIMPOU (Punho)');
+    return;
+  }
+
+  // Two fingers (index + middle) => BORRACHA
+  if (indexUp && middleUp && !up[2] && !up[3]) {
+    isEraser = true;
+    setModeText('BORRACHA (gesto)');
+  } else if (indexUp && !middleUp && !up[2] && !up[3]) {
+    isEraser = false;
+    setModeText('DESENHANDO (gesto)');
+  } else {
+    // se nenhum gesto de desenho ativo, sair
+    prev = null;
+  }
+
+  // Troca de cor por zonas no topo (há throttling)
+  if (Date.now() - lastGestureCheck > GESTURE_THROTTLE) {
+    lastGestureCheck = Date.now();
+    // se indicador estiver alto (y pequeno) trocamos cor por zona x
+    const idxTip = landmarks[8];
+    const coordsPreview = landmarkToCoords(idxTip);
+    if (coordsPreview.y < VIDEO_H * 0.18) {
+      // dividir em 3 zonas horizontais
+      if (coordsPreview.x < VIDEO_W/3) { drawColor = 'rgb(239,68,68)'; isEraser=false; setModeText('Vermelho (zona)'); }
+      else if (coordsPreview.x < 2*VIDEO_W/3) { drawColor = 'rgb(16,185,129)'; isEraser=false; setModeText('Verde (zona)'); }
+      else { drawColor = 'rgb(59,130,246)'; isEraser=false; setModeText('Azul (zona)'); }
+    }
+  }
+
+  // Desenho: calcular coordenadas (com suavização)
+  const tip = landmarks[8];
+  const {x: rawX, y: rawY} = landmarkToCoords(tip); // já mapeado para canvas espelhado
+  // suavização simples exponencial
+  if (!smoothing.x) { smoothing.x = rawX; smoothing.y = rawY; }
+  smoothing.x = smoothing.x * smoothing.smoothFactor + rawX * (1 - smoothing.smoothFactor);
+  smoothing.y = smoothing.y * smoothing.smoothFactor + rawY * (1 - smoothing.smoothFactor);
+  const x = smoothing.x;
+  const y = smoothing.y;
+
+  // Se estamos em modo desenho/eraser (indexUp true) desenhar linha entre prev e atual
+  if (indexUp) {
+    const thickness = isEraser ? 48 : 8;
+    const composite = isEraser ? 'destination-out' : 'source-over';
+    const color = isEraser ? 'rgba(0,0,0,1)' : drawColor;
+
+    if (prev) {
+      // desenha várias pequenas linhas curtas para suavizar (evita pule)
+      drawLine(prev.x, prev.y, x, y, color, thickness, composite);
+    } else {
+      // desenha um ponto inicial para evitar buraco
+      dctx.save();
+      dctx.globalCompositeOperation = composite;
+      dctx.beginPath();
+      dctx.fillStyle = color;
+      dctx.arc(x, y, thickness/2, 0, Math.PI*2);
+      dctx.fill();
+      dctx.restore();
+    }
+    prev = {x, y};
+  } else {
+    prev = null;
+  }
+}
+
+/* ==========================
+   Redimensionamento (quando a tela muda)
+   ========================== */
+function adaptSizeToScreen(){
+  // Manter a resolução de processamento (VIDEO_W x VIDEO_H), mas ajustar estilos para container
+  resizeToContainer();
+}
+window.addEventListener('load', adaptSizeToScreen);
+
+/* ==========================
+   Observações de permissão (ajuda para usuário)
+   ========================== */
+/*
+Se no seu tablet aparece “Este site não pode pedir permissões”:
+  • Feche apps com sobreposição (bolhas/chat heads).
+  • Vá em Configurações → Apps → (seu navegador) → Permissões → Câmera → permitir.
+  • Recarregue a página e clique em Iniciar.
+  • Certifique-se de usar um navegador atualizado (Chrome/Edge) e que a URL esteja em HTTPS.
+*/
+
+/* ==========================
+   Final
+   ========================== */
 </script>
 </body>
 </html>
