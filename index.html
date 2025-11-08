@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caneta Virtual AI (Mobile)</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- MediaPipe Hands CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675469240/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675469240/camera_utils.js" crossorigin="anonymous"></script>
@@ -40,44 +38,45 @@
 <body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-2 sm:p-4">
     <h1 class="text-2xl font-bold mb-4 text-indigo-400">Caneta Virtual Web (Gestos)</h1>
     
-    <!-- Controles de Cor e Ação -->
+    <button id="start-btn" onclick="startVirtualPen()" 
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105 mb-4">
+        ▶️ Iniciar Câmera
+    </button>
+
     <div id="controls" class="flex flex-wrap justify-center gap-2 p-2 bg-gray-800 rounded-xl shadow-lg w-full max-w-lg mb-4">
-        <button onclick="changeColor('255, 0, 0', 'Desenhar')" class="color-btn bg-red-600 hover:bg-red-700 active:ring-4 active:ring-red-400">Vermelho</button>
-        <button onclick="changeColor('0, 255, 0', 'Desenhar')" class="color-btn bg-green-600 hover:bg-green-700 active:ring-4 active:ring-green-400">Verde</button>
-        <button onclick="changeColor('0, 0, 255', 'Desenhar')" class="color-btn bg-blue-600 hover:bg-blue-700 active:ring-4 active:ring-blue-400">Azul</button>
-        <button onclick="changeColor('0, 0, 0', 'Apagar')" class="color-btn bg-gray-500 hover:bg-gray-600 active:ring-4 active:ring-gray-300">Borracha</button>
+        <button onclick="changeColor('255, 0, 0', 'Desenhar', event)" class="color-btn bg-red-600 hover:bg-red-700 active:ring-4 active:ring-red-400 ring-4 ring-offset-2 ring-indigo-400 ring-offset-gray-900">Vermelho</button>
+        <button onclick="changeColor('0, 255, 0', 'Desenhar', event)" class="color-btn bg-green-600 hover:bg-green-700 active:ring-4 active:ring-green-400">Verde</button>
+        <button onclick="changeColor('0, 0, 255', 'Desenhar', event)" class="color-btn bg-blue-600 hover:bg-blue-700 active:ring-4 active:ring-blue-400">Azul</button>
+        <button onclick="changeColor('0, 0, 0', 'Apagar', event)" class="color-btn bg-gray-500 hover:bg-gray-600 active:ring-4 active:ring-gray-300">Borracha</button>
         <button onclick="clearCanvas()" class="color-btn bg-indigo-600 hover:bg-indigo-700 active:ring-4 active:ring-indigo-400">Limpar</button>
     </div>
 
-    <!-- Container do Vídeo e Canvas de Desenho -->
     <div class="canvas-container w-full max-w-xl rounded-xl overflow-hidden shadow-2xl border-4 border-indigo-500">
-        <!-- O canvas de saída do MediaPipe (vídeo espelhado e landmarks) -->
         <canvas id="outputCanvas"></canvas>
-        <!-- O canvas onde desenhamos -->
         <canvas id="drawingCanvas"></canvas>
     </div>
 
-    <!-- Feedback e Status -->
     <div id="status" class="mt-4 p-3 bg-gray-800 rounded-lg w-full max-w-xl text-center text-sm font-semibold">
-        <p>Modo: <span id="currentMode" class="text-green-400">INATIVO (Aguardando Câmera)</span></p>
+        <p>Modo: <span id="currentMode" class="text-white">INATIVO (Clique em Iniciar Câmera)</span></p>
         <p>Ações: 👆 Desenhar, 🤞 Borracha, ✊ Limpar Tela (Gesto).</p>
     </div>
     
     <script>
-        // Configurações Globais
+        // --- 1. Configurações Globais ---
         const DRAW_THICKNESS = 8;
         const ERASER_THICKNESS = 40;
-        let drawColor = '0, 255, 0'; // Inicialmente verde
+        let drawColor = '255, 0, 0'; // Inicialmente Vermelho
         let currentTool = 'Desenhar';
         let prevX = 0, prevY = 0;
         let canvas, ctx;
-        let videoElement, camera;
-
+        let videoElement;
+        let camera; // Variável para a instância da câmera
+        
         const outputCanvas = document.getElementById('outputCanvas');
         const outputCtx = outputCanvas.getContext('2d');
         const statusElement = document.getElementById('currentMode');
         
-        // --- 1. Inicialização do Canvas de Desenho ---
+        // --- 2. Inicialização do Canvas de Desenho ---
         function initDrawingCanvas() {
             canvas = document.getElementById('drawingCanvas');
             ctx = canvas.getContext('2d');
@@ -89,13 +88,9 @@
             canvas.height = videoHeight;
         }
 
-        // --- 2. Lógica de Gestos ---
+        // --- 3. Lógica de Gestos ---
         function getDrawingMode(landmarks) {
             if (!landmarks || landmarks.length === 0) return 'IDLE';
-
-            // Normaliza a posição da mão para evitar detecção quando a mão está muito longe
-            const wristY = landmarks[0].y;
-            const thumbTipX = landmarks[4].x;
 
             // Índices dos pontos de interesse
             const fingerTips = [8, 12, 16, 20]; // Indicador, Médio, Anelar, Mínimo
@@ -112,7 +107,7 @@
             // 0=Indicador, 1=Médio, 2=Anelar, 3=Mínimo
             const allDown = !fingersUp.some(up => up); 
 
-            // Sinal 1: LIMPAR TELA (Punho Fechado)
+            // Sinal 1: LIMPAR TELA (Punho Fechado) - ✊
             if (allDown) {
                 return 'CLEAR';
             }
@@ -132,7 +127,7 @@
         }
 
 
-        // --- 3. Desenho e Loop de Renderização ---
+        // --- 4. Desenho e Loop de Renderização (onResults) ---
         function onResults(results) {
             outputCtx.save();
             outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
@@ -166,7 +161,7 @@
             if (mode === 'CLEAR') {
                 clearCanvas();
                 statusElement.textContent = 'LIMPOU TELA (Punho Fechado)!';
-                statusElement.classList.remove('text-red-400');
+                statusElement.classList.remove('text-red-400', 'text-green-400', 'text-white');
                 statusElement.classList.add('text-yellow-400');
                 prevX = 0; prevY = 0;
                 return;
@@ -175,15 +170,15 @@
             if (mode === 'DRAW' || mode === 'ERASE') {
                 
                 const thickness = mode === 'DRAW' ? DRAW_THICKNESS : ERASER_THICKNESS;
-                const color = mode === 'DRAW' ? `rgb(${drawColor})` : 'rgb(0, 0, 0)'; // Borracha é preto
-                const globalCompositeOperation = mode === 'DRAW' ? 'source-over' : 'destination-out'; // Borracha
+                const color = mode === 'DRAW' ? `rgb(${drawColor})` : 'rgb(0, 0, 0)'; 
+                const globalCompositeOperation = mode === 'DRAW' ? 'source-over' : 'destination-out'; 
 
                 statusElement.textContent = mode === 'DRAW' ? `DESENHANDO (${currentTool})` : 'APAGANDO (Borracha)';
-                statusElement.classList.remove('text-yellow-400');
+                statusElement.classList.remove('text-yellow-400', 'text-white');
                 statusElement.classList.add(mode === 'DRAW' ? 'text-green-400' : 'text-red-400');
                 
                 if (prevX === 0 && prevY === 0) {
-                    // Começa um novo traço, movendo para a posição atual
+                    // Começa um novo traço
                     prevX = currentX;
                     prevY = currentY;
                 } else {
@@ -203,76 +198,95 @@
                 }
 
             } else {
-                // Modo IDLE (Inativo ou Gesto de Seleção de Cor/IDLE)
+                // Modo IDLE
                 statusElement.textContent = 'INATIVO (Aguardando Gesto)';
                 statusElement.classList.remove('text-red-400', 'text-green-400', 'text-yellow-400');
                 statusElement.classList.add('text-white');
-                prevX = 0; prevY = 0; // Reseta o cursor para evitar traços acidentais
+                prevX = 0; prevY = 0; // Reseta o cursor
             }
         }
 
-        // --- 4. Funções de Controle ---
+        // --- 5. Funções de Controle ---
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        function changeColor(colorRgb, toolName) {
+        function changeColor(colorRgb, toolName, event) {
             drawColor = colorRgb;
             currentTool = toolName;
             
-            // Remove o destaque dos botões
-            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-400'));
+            // Remove o destaque de todos os botões de cor
+            document.querySelectorAll('#controls button').forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-400', 'ring-offset-gray-900'));
             
-            // Adiciona destaque ao botão clicado
-            const clickedBtn = event.target;
-            clickedBtn.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-400');
+            // Adiciona destaque ao botão clicado, se não for o botão Limpar
+            if (event && event.target.textContent !== 'Limpar') {
+                event.target.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-400', 'ring-offset-gray-900');
+            }
             
             // Atualiza o feedback visual
             statusElement.textContent = `Cor alterada para ${toolName}!`;
+            statusElement.classList.add('text-green-400');
         }
 
-        // --- 5. Inicialização da Câmera ---
+        // --- 6. Inicialização do MediaPipe ---
         const hands = new Hands({locateFile: (file) => {
-            // Caminho para os arquivos do MediaPipe
             return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
         }});
 
         hands.setOptions({
             maxNumHands: 1,
-            modelComplexity: 1, // 0 para Mobile, 1 para Padrão (performance)
+            modelComplexity: 1,
             minDetectionConfidence: 0.7,
             minTrackingConfidence: 0.5
         });
 
         hands.onResults(onResults);
 
-        // O Camera API lida com a captura de vídeo e envio para o MediaPipe
+        // --- 7. Inicialização da Câmera (Chamada pelo Botão) ---
         videoElement = document.createElement('video');
-        
         const outputCanvasContainer = document.querySelector('.canvas-container');
-        
-        camera = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({image: videoElement});
-            },
-            width: outputCanvasContainer.offsetWidth,
-            height: outputCanvasContainer.offsetHeight * 0.75 // Mantém a proporção 4:3
-        });
 
-        // Garantir que os canvas tenham o tamanho correto após a inicialização da câmera
-        videoElement.addEventListener('loadedmetadata', () => {
-            // Define o tamanho de ambos os canvas com base no vídeo (320x240 é um bom ponto de partida)
-            outputCanvas.width = 320;
-            outputCanvas.height = 240;
-            initDrawingCanvas();
-            camera.start();
-        });
-        
-        // --- Inicia ---
-        camera.start();
+        function startVirtualPen() {
+            // Desabilita o botão para evitar cliques múltiplos
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('start-btn').textContent = 'Solicitando Câmera...';
+            
+            // Cria a instância da câmera MediaPipe
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                },
+                // Define o tamanho da captura
+                width: 320, 
+                height: 240
+            });
+
+            // Garante que os canvas tenham o tamanho correto após a inicialização da câmera
+            videoElement.addEventListener('loadedmetadata', () => {
+                // Define o tamanho de ambos os canvas
+                outputCanvas.width = 320;
+                outputCanvas.height = 240;
+                initDrawingCanvas();
+                camera.start();
+                
+                // Oculta o botão e atualiza o status
+                document.getElementById('start-btn').style.display = 'none'; 
+                statusElement.textContent = 'Câmera Iniciada! Aguardando Gesto.';
+            });
+            
+            // Tenta iniciar a câmera (solicita permissão)
+            camera.start().catch(error => {
+                console.error("Erro ao iniciar a câmera:", error);
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('start-btn').textContent = '❌ Erro de Permissão. Tente Novamente.';
+                statusElement.textContent = 'ERRO: Permissão de câmera negada ou dispositivo não encontrado.';
+                statusElement.classList.add('text-red-400');
+            });
+            
+        }
+
+        // Inicializa o canvas de desenho assim que a página carrega, mas não a câmera
         initDrawingCanvas();
     </script>
 </body>
 </html>
-
-
