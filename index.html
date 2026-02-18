@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture OS</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="overflow-hidden text-white select-none">
+
+    <div class="relative w-full h-screen flex flex-col items-center justify-center p-4">
+        
+        <!-- Header -->
+        <header class="absolute top-6 z-20 glass-panel px-8 py-3 rounded-full flex items-center justify-between gap-8 shadow-2xl min-w-[300px]">
+            <h1 class="font-outfit font-bold text-xl tracking-wide bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                Gesture OS
+            </h1>
+            <div id="modeStatus" class="font-mono text-sm font-bold text-indigo-300">
+                🪐 COMANDO
+            </div>
+        </header>
+
+        <!-- Main Viewport -->
+        <main class="relative w-full max-w-[1280px] aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/50 backdrop-blur-sm">
+            
+            <video id="inputVideo" class="absolute top-0 left-0 w-full h-full object-cover opacity-30 transform -scale-x-100"></video>
+            <canvas id="outputCanvas" class="absolute top-0 left-0 w-full h-full z-10 transform -scale-x-100"></canvas>
+            
+            <!-- Instructions Overlay -->
+            <div class="absolute bottom-6 left-6 z-20 text-xs text-slate-400 font-inter space-y-1">
+                <p><strong class="text-white">✋ Mão Aberta (1s):</strong> Trocar Modo</p>
+                <p><strong class="text-white">✊ Punho:</strong> Cancelar / Limpar</p>
+                <p><strong class="text-white">🤏 Pinça:</strong> Desenhar / Confirmar</p>
+            </div>
+
+            <!-- Start Button -->
+            <div id="startOverlay" class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md z-30">
+                <button id="startBtn" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl transition-all transform hover:scale-105">
+                    🚀 Iniciar Sistema
+                </button>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
