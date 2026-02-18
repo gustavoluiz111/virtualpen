@@ -1,443 +1,75 @@
-<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gesture OS</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- MediaPipe -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="style.css">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gesture OS</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- MediaPipe (Stable Version) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="overflow-hidden text-white select-none">
 
-    <div class="relative w-full h-screen flex flex-col items-center justify-center p-4">
-        
-        <!-- Header -->
-        <header class="absolute top-6 z-20 glass-panel px-8 py-3 rounded-full flex items-center justify-between gap-8 shadow-2xl min-w-[300px]">
-            <h1 class="font-outfit font-bold text-xl tracking-wide bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                Gesture OS
-            </h1>
-            <div id="modeStatus" class="font-mono text-sm font-bold text-indigo-300">
-                🪐 COMANDO
-            </div>
-        </header>
+  <div class="relative w-full h-screen flex flex-col items-center justify-center p-4">
 
-        <!-- Main Viewport -->
-        <main class="relative w-full max-w-[1280px] aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/50 backdrop-blur-sm">
-            
-            <video id="inputVideo" class="absolute top-0 left-0 w-full h-full object-cover opacity-30 transform -scale-x-100"></video>
-            <canvas id="outputCanvas" class="absolute top-0 left-0 w-full h-full z-10 transform -scale-x-100"></canvas>
-            
-            <!-- Instructions Overlay -->
-            <div class="absolute bottom-6 left-6 z-20 text-xs text-slate-400 font-inter space-y-1">
-                <p><strong class="text-white">✋ Mão Aberta (1s):</strong> Trocar Modo</p>
-                <p><strong class="text-white">✊ Punho:</strong> Cancelar / Limpar</p>
-                <p><strong class="text-white">🤏 Pinça:</strong> Desenhar / Confirmar</p>
-            </div>
+    <!-- Header -->
+    <header
+      class="absolute top-6 z-20 glass-panel px-8 py-3 rounded-full flex items-center justify-between gap-8 shadow-2xl min-w-[300px]">
+      <h1
+        class="font-outfit font-bold text-xl tracking-wide bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+        Gesture OS
+      </h1>
+      <div id="modeStatus" class="font-mono text-sm font-bold text-indigo-300">
+        🪐 COMANDO
+      </div>
+    </header>
 
-            <!-- Start Button -->
-            <div id="startOverlay" class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md z-30">
-                <button id="startBtn" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl transition-all transform hover:scale-105">
-                    🚀 Iniciar Sistema
-                </button>
-            </div>
+    <!-- Main Viewport -->
+    <main
+      class="relative w-full max-w-[1280px] aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/50 backdrop-blur-sm">
 
-        </main>
-    </div>
+      <video id="inputVideo"
+        class="absolute top-0 left-0 w-full h-full object-cover opacity-50 transform -scale-x-100"></video>
+      <!-- Canvas para desenhos permanentes -->
+      <canvas id="bgCanvas" class="absolute top-0 left-0 w-full h-full z-10"></canvas>
+      <!-- Canvas para interface e cursor (limpo a cada frame) -->
+      <canvas id="uiCanvas" class="absolute top-0 left-0 w-full h-full z-20"></canvas>
 
-    <!-- Modules -->
-    <script type="module" src="js/main.js"></script>
-=======
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Caneta Virtual (Gestos) — Copy & Paste</title>
-<script src="https://cdn.tailwindcss.com"></script>
+      <!-- Instructions Overlay -->
+      <div class="absolute bottom-6 left-6 z-20 text-xs text-slate-400 font-inter space-y-1">
+        <p><strong class="text-white">✋ Mão Aberta (1s):</strong> Trocar Modo</p>
+        <p><strong class="text-white">✊ Punho:</strong> Cancelar / Limpar</p>
+        <p><strong class="text-white">🤏 Pinça:</strong> Desenhar / Confirmar</p>
+      </div>
 
-<!-- MediaPipe (corrigido) -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+      <!-- Start Button -->
+      <div id="startOverlay"
+        class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md z-30">
+        <button id="startBtn"
+          class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl transition-all transform hover:scale-105">
+          🚀 Iniciar Sistema
+        </button>
+      </div>
 
-<style>
-  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#0f172a; color:#fff; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px; }
-  .card { width:100%; max-width:920px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:14px; box-shadow: 0 6px 30px rgba(2,6,23,0.7); border:1px solid rgba(255,255,255,0.03); }
-  .canvas-wrap { position:relative; width:100%; padding-top:62.5%; border-radius:10px; overflow:hidden; background:#111827; }
-  video, canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
-  #videoEl { transform:scaleX(-1); }
-  #overlayCanvas { pointer-events:none; z-index:2; }
-  #drawCanvas { z-index:3; }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-  .swatch { width:44px; height:28px; border-radius:8px; border:2px solid rgba(255,255,255,0.06); box-shadow:0 4px 14px rgba(2,6,23,0.5); display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  .swatch.active { outline:3px solid rgba(99,102,241,0.85); transform:scale(1.03); }
-  .btn { background:#374151; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; }
-  .status { font-weight:600; color:#e5e7eb; }
-  .legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
-  .legend .item { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:8px; }
-  .small { font-size:13px; color:#cbd5e1; }
-</style>
-</head>
-<body>
-
-<div class="card">
-  <h1 style="font-size:20px; color:#a78bfa; margin:0 0 8px 0;">Caneta Virtual — Gestos</h1>
-
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-    <div>
-      <button id="startBtn" class="btn">▶️ Iniciar Câmera</button>
-      <button id="clearBtn" class="btn" style="margin-left:8px;">Limpar Tela</button>
-    </div>
-    <div class="status" id="statusText">Modo: INATIVO</div>
+    </main>
   </div>
 
-  <div class="canvas-wrap" style="margin-top:12px;">
-    <video id="videoEl" playsinline></video>
-    <canvas id="overlayCanvas"></canvas>
-    <canvas id="drawCanvas"></canvas>
-  </div>
-
-  <div class="controls" style="margin-top:10px;">
-    <div id="swatches" style="display:flex; gap:8px; align-items:center;">
-      <div class="swatch" data-rgb="255,0,0" title="Vermelho" style="background:rgb(255,0,0)"></div>
-      <div class="swatch" data-rgb="0,255,0" title="Verde" style="background:rgb(0,255,0)"></div>
-      <div class="swatch" data-rgb="0,0,255" title="Azul" style="background:rgb(0,0,255)"></div>
-      <div class="swatch" data-rgb="0,0,0" title="Preto" style="background:rgb(0,0,0)"></div>
-      <div class="swatch" data-rgb="255,255,255" title="Branco" style="background:rgb(255,255,255)"></div>
-    </div>
-
-    <div style="margin-left:auto; display:flex; gap:8px;">
-      <div class="small" id="hint">Trocar cor: posicione o indicador sobre uma cor e segure ~600ms</div>
-    </div>
-  </div>
-
-  <div class="legend" style="margin-top:12px;">
-    <div class="item"><strong>👆</strong><div class="small">Apontar = Desenhar</div></div>
-    <div class="item"><strong>🤞</strong><div class="small">Indicador + Médio = Borracha</div></div>
-    <div class="item"><strong>✊</strong><div class="small">Punho Fechado = Limpar Tela</div></div>
-    <div class="item"><strong>🖐️ (segurar)</strong><div class="small">Segurar indicador sobre swatch = Trocar cor</div></div>
-  </div>
-</div>
-
-<script>
-const VIDEO_W = 640;
-const VIDEO_H = 480;
-
-const videoEl = document.getElementById('videoEl');
-const overlay = document.getElementById('overlayCanvas');
-const drawCanvas = document.getElementById('drawCanvas');
-const statusText = document.getElementById('statusText');
-const startBtn = document.getElementById('startBtn');
-const clearBtn = document.getElementById('clearBtn');
-const swatchesEl = document.getElementById('swatches');
-
-const DPR = Math.max(1, window.devicePixelRatio || 1);
-
-function setCanvasSize() {
-  const wrap = videoEl.parentElement;
-  const rect = wrap.getBoundingClientRect();
-  overlay.width = Math.round(rect.width * DPR);
-  overlay.height = Math.round(rect.height * DPR);
-  overlay.style.width = rect.width + 'px';
-  overlay.style.height = rect.height + 'px';
-
-  drawCanvas.width = overlay.width;
-  drawCanvas.height = overlay.height;
-  drawCanvas.style.width = rect.width + 'px';
-  drawCanvas.style.height = rect.height + 'px';
-
-  videoEl.width = rect.width;
-  videoEl.height = rect.height;
-  videoEl.style.width = rect.width + 'px';
-  videoEl.style.height = rect.height + 'px';
-}
-setCanvasSize();
-window.addEventListener('resize', () => { setCanvasSize(); });
-
-const oCtx = overlay.getContext('2d');
-const dCtx = drawCanvas.getContext('2d');
-
-let drawColor = '255,0,0';
-let drawThickness = 6;
-let eraserThickness = 40;
-
-let prev = null;
-let lastDrawAt = 0;
-const MIN_DRAW_INTERVAL = 8;
-
-let lastColorHover = null;
-const COLOR_HOLD_MS = 600;
-
-function landmarkToCanvasXY(lm, canvasEl) {
-  return {
-    x: (1 - lm.x) * canvasEl.width,
-    y: lm.y * canvasEl.height
-  };
-}
-
-function detectGesture(lm) {
-  if (!lm) return 'IDLE';
-
-  const tips = [8,12,16,20];
-  const pips = [6,10,14,18];
-  const up = tips.map((t,i)=> lm[t].y < lm[pips[i]].y);
-  const allDown = !up.some(Boolean);
-
-  if (allDown) return 'CLEAR';
-  if (up[0] && up[1] && !up[2] && !up[3]) return 'ERASE';
-  if (up[0] && !up[1] && !up[2] && !up[3]) return 'DRAW';
-  return 'IDLE';
-}
-
-function strokeLine(p1, p2, colorStr, thickness, composite = 'source-over') {
-  dCtx.save();
-  dCtx.globalCompositeOperation = composite;
-  dCtx.lineCap = 'round';
-  dCtx.lineJoin = 'round';
-  dCtx.strokeStyle = colorStr;
-  dCtx.lineWidth = thickness;
-  dCtx.beginPath();
-  dCtx.moveTo(p1.x, p1.y);
-  dCtx.lineTo(p2.x, p2.y);
-  dCtx.stroke();
-  dCtx.restore();
-}
-
-function clearDraw() { dCtx.clearRect(0,0,drawCanvas.width, drawCanvas.height); }
-
-function drawSwatchesOverlay() {
-  const gap = 10 * DPR;
-  const swW = 80 * DPR;
-  const swH = 44 * DPR;
-  const startX = 12 * DPR;
-  const startY = 12 * DPR;
-
-  oCtx.save();
-  oCtx.clearRect(0,0,overlay.width, overlay.height);
-
-  oCtx.fillStyle = 'rgba(0,0,0,0.25)';
-  oCtx.fillRect(startX - 8*DPR, startY - 8*DPR,
-    (swW + gap) * swatchesEl.children.length + 16*DPR,
-    swH + 16*DPR);
-
-  for (let i=0;i<swatchesEl.children.length;i++){
-    const sw = swatchesEl.children[i];
-    const rgb = sw.dataset.rgb;
-    const x = startX + i*(swW + gap);
-
-    oCtx.fillStyle = `rgb(${rgb})`;
-    oCtx.fillRect(x, startY, swW, swH);
-
-    oCtx.strokeStyle = 'rgba(255,255,255,0.08)';
-    oCtx.lineWidth = 2*DPR;
-    oCtx.strokeRect(x, startY, swW, swH);
-
-    if (rgb === drawColor) {
-      oCtx.strokeStyle = 'rgba(167,139,250,0.95)';
-      oCtx.lineWidth = 4*DPR;
-      oCtx.strokeRect(x-6*DPR, startY-6*DPR, swW+12*DPR, swH+12*DPR);
-    }
-  }
-  oCtx.restore();
-}
-
-function swatchUnder(x, y) {
-  const gap = 10 * DPR;
-  const swW = 80 * DPR;
-  const swH = 44 * DPR;
-  const startX = 12 * DPR;
-  const startY = 12 * DPR;
-
-  for (let i=0;i<swatchesEl.children.length;i++){
-    const sx = startX + i*(swW + gap);
-    if (x >= sx && x <= sx + swW && y >= startY && y <= startY + swH)
-      return swatchesEl.children[i];
-  }
-  return null;
-}
-
-(function initSwatchesHtml() {
-  if (swatchesEl.children.length) {
-    swatchesEl.children[0].classList.add('active');
-    drawColor = swatchesEl.children[0].dataset.rgb;
-  }
-  Array.from(swatchesEl.children).forEach(sw=>{
-    sw.addEventListener('click', ()=> {
-      Array.from(swatchesEl.children).forEach(s=>s.classList.remove('active'));
-      sw.classList.add('active');
-      drawColor = sw.dataset.rgb;
-      drawSwatchesOverlay();
-    });
-  });
-})();
-
-const hands = new Hands({
-  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
-
-hands.setOptions({
-  maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.6
-});
-
-let camera = null;
-let lastProcessedAt = 0;
-const PROCESS_THROTTLE_MS = 8;
-
-hands.onResults(onHandsResults);
-
-function onHandsResults(results) {
-  drawSwatchesOverlay();
-
-  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-    statusText.textContent = 'Modo: INATIVO';
-    prev = null;
-    lastColorHover = null;
-    return;
-  }
-
-  const lm = results.multiHandLandmarks[0];
-
-  oCtx.save();
-  for (let i=0;i<lm.length;i++){
-    const p = landmarkToCanvasXY(lm[i], overlay);
-    oCtx.beginPath();
-    oCtx.arc(p.x, p.y, 4*DPR, 0, Math.PI*2);
-    oCtx.fillStyle = 'rgba(255,255,255,0.9)';
-    oCtx.fill();
-  }
-
-  try {
-    drawConnectors(oCtx, lm, HAND_CONNECTIONS, {color:'#00ff9f', lineWidth:2*DPR});
-  } catch(e){}
-  oCtx.restore();
-
-  const gesture = detectGesture(lm);
-  const indexTip = landmarkToCanvasXY(lm[8], overlay);
-
-  const hovered = swatchUnder(indexTip.x, indexTip.y);
-  if (hovered) {
-    if (!lastColorHover || lastColorHover.swatch !== hovered) {
-      lastColorHover = { swatch: hovered, start: performance.now() };
-    } else {
-      const dt = performance.now() - lastColorHover.start;
-      oCtx.save();
-      const p = Math.min(1, dt / COLOR_HOLD_MS);
-      oCtx.beginPath();
-      oCtx.arc(indexTip.x, indexTip.y, 18*DPR, -Math.PI/2, -Math.PI/2 + 2*Math.PI*p);
-      oCtx.strokeStyle = 'rgba(255,255,255,0.9)';
-      oCtx.lineWidth = 3*DPR;
-      oCtx.stroke();
-      oCtx.restore();
-
-      if (dt >= COLOR_HOLD_MS) {
-        Array.from(swatchesEl.children).forEach(s=>s.classList.remove('active'));
-        lastColorHover.swatch.classList.add('active');
-        drawColor = lastColorHover.swatch.dataset.rgb;
-        statusText.textContent = 'Cor alterada!';
-        setTimeout(()=>statusText.textContent = 'Modo: ' + (gesture === 'DRAW' ? 'DESENHANDO' : 'INATIVO'), 800);
-        lastColorHover = null;
-      }
-    }
-  } else {
-    lastColorHover = null;
-  }
-
-  const now = performance.now();
-  if (now - lastProcessedAt < PROCESS_THROTTLE_MS) return;
-  lastProcessedAt = now;
-
-  if (gesture === 'CLEAR') {
-    clearDraw();
-    statusText.textContent = 'LIMPOU TELA (Punho Fechado)';
-    prev = null;
-    return;
-  }
-
-  if (gesture === 'ERASE') {
-    statusText.textContent = 'APAGANDO (Borracha)';
-    if (prev && (now - lastDrawAt) > MIN_DRAW_INTERVAL) {
-      strokeLine(prev, indexTip, 'rgba(0,0,0,1)', eraserThickness, 'destination-out');
-      lastDrawAt = now;
-    }
-    prev = { x:indexTip.x, y:indexTip.y };
-    return;
-  }
-
-  if (gesture === 'DRAW') {
-    statusText.textContent = 'DESENHANDO';
-    if (prev && (now - lastDrawAt) > MIN_DRAW_INTERVAL) {
-      strokeLine(prev, indexTip, `rgb(${drawColor})`, drawThickness);
-      lastDrawAt = now;
-    }
-    prev = { x:indexTip.x, y:indexTip.y };
-    return;
-  }
-
-  statusText.textContent = 'Modo: INATIVO';
-  prev = null;
-}
-
-startBtn.addEventListener('click', async () => {
-  startBtn.disabled = true;
-  startBtn.textContent = 'Iniciando câmera...';
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: VIDEO_W, height: VIDEO_H, facingMode: 'user' }
-    });
-
-    videoEl.srcObject = stream;
-    await videoEl.play();
-    setCanvasSize();
-
-    camera = new Camera(videoEl, {
-      onFrame: async () => {
-        await hands.send({ image: videoEl });
-      },
-      width: VIDEO_W,
-      height: VIDEO_H
-    });
-
-    camera.start();
-    startBtn.style.display = 'none';
-    statusText.textContent = 'Câmera iniciada — Aguardando gesto';
-
-  } catch(err) {
-    console.error(err);
-    startBtn.disabled = false;
-    startBtn.textContent = '▶️ Iniciar Câmera';
-    statusText.textContent = 'Erro: permissão/câmera';
-  }
-});
-
-clearBtn.addEventListener('click', () => {
-  clearDraw();
-  statusText.textContent = 'Tela limpa (botão)';
-});
-
-drawSwatchesOverlay();
-
-window.addEventListener('beforeunload', () => {
-  try {
-    if (camera && camera.video && camera.video.srcObject) {
-      camera.video.srcObject.getTracks().forEach(t=>t.stop());
-    }
-  } catch(e){}
-});
-</script>
->>>>>>> 500653ba2ccd2b6db281ac136bdd22d279b22051
+  <!-- Modules -->
+  <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

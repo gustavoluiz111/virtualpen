@@ -4,19 +4,20 @@ export const STATE = {
     isErasing: false,
     drawColor: '#ef4444',
     drawSize: 6,
-    
+
     // Command Mode State
     planetRotation: 0,
     selectedOrbitIndex: -1,
     hoveredIconIndex: -1,
-    
+
     // Smoothing
-    lastX: 0, 
+    lastX: 0,
     lastY: 0,
-    
+
     // System
     canvasWidth: 0,
-    canvasHeight: 0
+    canvasHeight: 0,
+    isMirrored: true // Selfie mode alignment
 };
 
 export const EVENTS = {

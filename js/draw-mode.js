@@ -1,8 +1,9 @@
 import { STATE } from './state.js';
 
 export class DrawMode {
-    constructor(ctx) {
-        this.ctx = ctx;
+    constructor(bgCtx, uiCtx) {
+        this.bgCtx = bgCtx;
+        this.uiCtx = uiCtx;
     }
 
     update(gesture, x, y) {
@@ -23,68 +24,68 @@ export class DrawMode {
             // Lift pen
             STATE.isDrawing = false;
             STATE.isErasing = false;
-            this.ctx.beginPath(); // Reset path
+            this.bgCtx.beginPath(); // Reset path on permanent layer
         }
 
-        // Visual Feedback (Cursor)
+        // Visual Feedback (Cursor always on UI layer)
         this.drawCursor(x, y, gesture);
     }
 
     draw(x, y) {
-        this.ctx.globalCompositeOperation = 'source-over';
-        this.ctx.lineWidth = STATE.drawSize;
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
-        this.ctx.strokeStyle = STATE.drawColor;
+        this.bgCtx.globalCompositeOperation = 'source-over';
+        this.bgCtx.lineWidth = STATE.drawSize;
+        this.bgCtx.lineCap = 'round';
+        this.bgCtx.lineJoin = 'round';
+        this.bgCtx.strokeStyle = STATE.drawColor;
 
         if (!STATE.isDrawing) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(x, y);
+            this.bgCtx.beginPath();
+            this.bgCtx.moveTo(x, y);
         } else {
-            this.ctx.lineTo(x, y);
-            this.ctx.stroke();
+            this.bgCtx.lineTo(x, y);
+            this.bgCtx.stroke();
         }
     }
 
     erase(x, y) {
-        this.ctx.globalCompositeOperation = 'destination-out';
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 20, 0, Math.PI * 2);
-        this.ctx.fill();
+        this.bgCtx.globalCompositeOperation = 'destination-out';
+        this.bgCtx.beginPath();
+        this.bgCtx.arc(x, y, 20, 0, Math.PI * 2);
+        this.bgCtx.fill();
     }
 
     clearScreen() {
-        this.ctx.clearRect(0, 0, STATE.canvasWidth, STATE.canvasHeight);
+        this.bgCtx.clearRect(0, 0, STATE.canvasWidth, STATE.canvasHeight);
     }
 
     drawCursor(x, y, gesture) {
-        this.ctx.globalCompositeOperation = 'source-over';
-        
+        this.uiCtx.globalCompositeOperation = 'source-over';
+
         // Shadow/Glow
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = STATE.drawColor;
-        
-        this.ctx.beginPath();
+        this.uiCtx.shadowBlur = 10;
+        this.uiCtx.shadowColor = STATE.drawColor;
+
+        this.uiCtx.beginPath();
         if (gesture === 'PEACE') {
-             this.ctx.arc(x, y, 20, 0, Math.PI * 2);
-             this.ctx.strokeStyle = '#ef4444'; // Red for eraser
-             this.ctx.lineWidth = 2;
-             this.ctx.stroke();
+            this.uiCtx.arc(x, y, 20, 0, Math.PI * 2);
+            this.uiCtx.strokeStyle = '#ef4444'; // Red for eraser
+            this.uiCtx.lineWidth = 2;
+            this.uiCtx.stroke();
         } else {
-            this.ctx.arc(x, y, 6, 0, Math.PI * 2);
-            this.ctx.fillStyle = STATE.drawColor;
-            this.ctx.fill();
-            
+            this.uiCtx.arc(x, y, 6, 0, Math.PI * 2);
+            this.uiCtx.fillStyle = STATE.drawColor;
+            this.uiCtx.fill();
+
             // Ring if pinching
             if (gesture === 'PINCH') {
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, 10, 0, Math.PI * 2);
-                this.ctx.strokeStyle = 'white';
-                this.ctx.lineWidth = 1;
-                this.ctx.stroke();
+                this.uiCtx.beginPath();
+                this.uiCtx.arc(x, y, 10, 0, Math.PI * 2);
+                this.uiCtx.strokeStyle = 'white';
+                this.uiCtx.lineWidth = 1;
+                this.uiCtx.stroke();
             }
         }
-        
-        this.ctx.shadowBlur = 0; // Reset
+
+        this.uiCtx.shadowBlur = 0; // Reset
     }
 }

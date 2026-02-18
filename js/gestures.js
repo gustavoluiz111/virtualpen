@@ -12,21 +12,29 @@ export class GestureEngine {
         // 1. Coordinates
         const indexTip = landmarks[8];
         const thumbTip = landmarks[4];
-        
-        // Map to screen
-        // Mirror X
+
+        // Map to screen (Mirror X for selfie mode)
         const rawX = (1 - indexTip.x) * STATE.canvasWidth;
         const rawY = indexTip.y * STATE.canvasHeight;
 
-        // Smooth
-        const x = STATE.lastX + (rawX - STATE.lastX) * (1 - this.smoothingFactor);
-        const y = STATE.lastY + (rawY - STATE.lastY) * (1 - this.smoothingFactor);
-        
+        // Initialize last position to avoid jump from (0,0)
+        if (STATE.lastX === 0 && STATE.lastY === 0) {
+            STATE.lastX = rawX;
+            STATE.lastY = rawY;
+        }
+
+        // Smooth movement (Higher factor = smoother but more lag)
+        const smoothing = 0.3;
+        const x = STATE.lastX + (rawX - STATE.lastX) * (1 - smoothing);
+        const y = STATE.lastY + (rawY - STATE.lastY) * (1 - smoothing);
+
         STATE.lastX = x;
         STATE.lastY = y;
 
         // 2. Gesture Logic
         const gesture = this.detectGesture(landmarks);
+
+        // console.log(`🎯 Gesture Engine: ${gesture} at (${Math.round(x)}, ${Math.round(y)})`); // Removed log
 
         return { gesture, x, y };
     }
@@ -51,16 +59,16 @@ export class GestureEngine {
 
         const isFist = !isIndexUp && !isMiddleUp && !isRingUp && !isPinkyUp;
         const isOpenHand = isIndexUp && isMiddleUp && isRingUp && isPinkyUp;
-        
+
         // Pince / Pinch data
         const pinchDist = Math.sqrt(
-            Math.pow(indexTip.x - thumbTip.x, 2) + 
+            Math.pow(indexTip.x - thumbTip.x, 2) +
             Math.pow(indexTip.y - thumbTip.y, 2)
         );
 
         // Logic Hierarchy
         if (isFist) return 'FIST';
-        
+
         if (isOpenHand) return 'OPEN_HAND';
 
         // Peace Sign (Index + Middle) -> Eraser (in Draw mode)

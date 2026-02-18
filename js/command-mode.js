@@ -16,8 +16,8 @@ const APPS = [
 ];
 
 export class CommandMode {
-    constructor(ctx) {
-        this.ctx = ctx;
+    constructor(uiCtx) {
+        this.ctx = uiCtx;
         this.centerX = 0;
         this.centerY = 0;
         this.orbitRadius = 150;
